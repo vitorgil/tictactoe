@@ -6,10 +6,10 @@ Enjoy.
 
 
 To play use keys:
-	> w - up
-	> s - down
-	> a - left
-	> d - right
+- w - up
+- s - down
+- a - left
+- d - right
 
 -------------------
 Known problems:
