@@ -1,8 +1,7 @@
 package main
 
-import "tictactoe/src"
+import tictactoe "tictactoe/src"
 
 func main() {
-
 	tictactoe.Play()
 }
