@@ -13,13 +13,17 @@ To play use keys:
 
 -------------------
 Known problems:
-- there never is a winner
-- game only ends when the all cells have been used
-- "index out of bounds" due to no checks being made on position
-- and many more...
+- when the last cell is to be filled, if the player moves, the cell becomes empty. 
+- when the last cell is to be filled, the game should end without any action from the next player. 
 
 Future improvements:
-- improve choosing cell when moving in some direction.
+- add menu for choosing play mode
 - add proper 2-player playing mode
 - add player against computer playing mode
 - add levels of difficulty when playing with computer
+- add code tests
+
+History:
+- 23.09.2017 Added winner checking
+- 23.09.2017 Improved choosing next cell when moving
+- 22.09.2017 Fixed "index out of bounds" problem when moving out of the panel
