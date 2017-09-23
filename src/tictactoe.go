@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"tictactoe/utils"
-
+	
 	"github.com/eiannone/keyboard"
 )
 
@@ -15,16 +15,6 @@ type _Panel struct {
 	pointer    cell
 	horizontal *ring.Ring
 	vertical   *ring.Ring
-}
-
-func (p _Panel) getTransposed() [3][3]rune {
-	var matrix [3][3]rune
-	for r := 0; r < 3; r++ {
-		for c := 0; c < 3; c++ {
-			matrix[r][c] = p.matrix[3-1-r][3-1-c]
-		}
-	}
-	return matrix
 }
 
 func (p *_Panel) initialize() {
@@ -54,124 +44,86 @@ func (p *_Panel) initialize() {
 
 }
 
-/* Finds the first free cell after initialPosition
- */
-func (p *_Panel) findFirstFreeCell(initialPosition cell) *cell {
-
-	// Move rings to the right place
-	for initialPosition.col != p.horizontal.Value {
-		p.horizontal = p.horizontal.Next()
+// seems to be necessary to pass pointer to pointer, otherwise
+// the changes won't apply to the actual ring passed
+func moveRingToPosition(pos int, r **ring.Ring) {
+	for pos != (*r).Value.(int) {
+		
+		*r = (*r).Next()
 	}
-	for initialPosition.row != p.vertical.Value {
-		p.vertical = p.vertical.Next()
-	}
-
-	// Find first free cell
-	for hIndex := 0; hIndex < p.horizontal.Len(); hIndex++ {
-		hVal := p.horizontal.Value.(int)
-		for vIndex := 0; vIndex < p.vertical.Len(); vIndex++ {
-			vVal := p.vertical.Value.(int)
-			if p.isCellFree(cell{vVal, hVal}) {
-				// optimize making the cell
-				return &cell{vVal, hVal}
-			}
-			p.vertical = p.vertical.Next()
-		}
-		p.horizontal = p.horizontal.Next()
-	}
-
-	panic("no free cells!")
+	utils.Debug("ring final position: %d\n", (*r).Value.(int))
 }
 
-func nextCell(c cell, d Direction) *cell {
+/* Finds the first free cell after initialPosition
+ */
+func (p* _Panel) findFirstFreeCell(initialPosition cell) *cell {
 
-	r := ring.New(3)
-	r.Value = 0
-	r = r.Next()
-	r.Value = 1
-	r = r.Next()
-	r.Value = 2
+	utils.DebugString("finding first free cell\n")
+	utils.Debug("matrix: %c\n", p.matrix)
+	utils.Debug("initial position: %v\n", initialPosition)
 
-	switch d {
-	case up:
-		for c.row != r.Value {
-			r = r.Prev()
+	// Move rings to the right place
+	moveRingToPosition(initialPosition.col, &p.horizontal)
+	moveRingToPosition(initialPosition.row, &p.vertical)
+	
+	// Find first free cell
+	for vIndex := 0; vIndex < p.vertical.Len(); vIndex++ {
+		row := p.vertical.Value.(int)
+		for hIndex := 0; hIndex < p.horizontal.Len(); hIndex++ {
+			col := p.horizontal.Value.(int)
+			c := cell{row,col}
+			utils.Debug("trying cell: %v\n", c)
+	
+			if p.isCellFree(c) {
+				return &c
+			}
+			p.horizontal = p.horizontal.Next()
 		}
-		r = r.Prev()
-		val, _ := r.Value.(int)
-		return &cell{val, c.col}
-	case down:
-		for c.row != r.Value {
-			r = r.Next()
-		}
-		r = r.Next()
-		return &cell{r.Value.(int), c.col}
-	case left:
-		for c.col != r.Value {
-			r = r.Prev()
-		}
-		r = r.Prev()
-		return &cell{c.row, r.Value.(int)}
-	case right:
-		for c.col != r.Value {
-			r = r.Next()
-		}
-		r = r.Next()
-		return &cell{c.row, r.Value.(int)}
+		p.vertical = p.vertical.Next()
 	}
-	panic("problem in choosing next cell")
+	
+	// return input. should happen only at the end
+	return &initialPosition
 }
 
 /* Finds the first free cell after initialPosition
  */
 func (p _Panel) findFirstFreeCellInDirection(initialPosition cell, d Direction) *cell {
+	
+	var rotation int
 	if d == up {
-		
-		transposed := p.getTransposed()
-		
-		var newPanel _Panel
-		newPanel.matrix = transposed
-		newPanel.findFirstFreeCell(initialPosition)
-
-		
+		rotation = 90
 	} else if d == down {
-		for col := initialPosition.col; col < 3; col++ {
-			var _cell cell
-			for r := 0; r < 2; r++ {
-				_cell = *nextCell(cell{initialPosition.row, col}, d)
-				if p.isCellFree(_cell) {
-					return &_cell
-				}
-			}
-			// at the next round, we start from the top
-			initialPosition.row = 0
-		}
+		rotation = -90
 	} else if d == left {
-		for r := initialPosition.row; r >= 0; r-- {
-			var _cell cell
-			for c := 0; c < 2; c++ {
-				_cell = *nextCell(cell{r, initialPosition.col}, d)
-				if p.isCellFree(_cell) {
-					return &_cell
-				}
-			}
-			// at the next round, we start from the right
-			initialPosition.col = 2
-		}
+		rotation = 180
 	} else if d == right {
-		for r := initialPosition.row; r < 3; r++ {
-			var _cell cell
-			for c := 0; c < 2; c++ {
-				_cell = *nextCell(cell{r, initialPosition.col}, d)
-				if p.isCellFree(_cell) {
-					return &_cell
-				}
-			}
-			// at the next round, we start from the left
-			initialPosition.col = 0
-		}
+		rotation = 0
 	}
-	panic("no free cells!")
+
+	// get the rotated matrix from the panel's matrix and also the rotated initial position
+	rotated := utils.Rotate(p.matrix, rotation)
+	initialPositionRotated_r, initialPositionRotated_c := utils.CalculateRotatedCell(initialPosition.row, initialPosition.col, rotation)
+	
+	utils.Debug("rotated matrix : %c\n", rotated)
+	utils.Debug("rotated initial position: %v\n", cell{initialPositionRotated_r, initialPositionRotated_c})
+
+	// create new panel in which the matrix is the rotated one
+	newPanel := p
+	newPanel.matrix = rotated
+
+	// for the new panel, find the first free cell from the initial position given
+	cell_ := newPanel.findFirstFreeCell(cell{initialPositionRotated_r, initialPositionRotated_c})
+	utils.Debug("first free cell rotated: %v\n", *cell_)
+
+	// convert the found free position to the original matrix's coordinates
+	// that is, rotate -90 degrees
+	r, c := utils.CalculateRotatedCell(cell_.row, cell_.col, -rotation)
+	
+	utils.Debug("first free position final: %v\n", cell{r, c})
+	utils.WaitInput()
+	
+	return &cell{r, c}
 }
 
 func (p *_Panel) assignCellValue(c cell, val rune) {
@@ -195,7 +147,7 @@ func (p _Panel) print() {
 	for r := 0; r < 3; r++ {
 		fmt.Print(" ")
 		for c := 0; c < 3; c++ {
-			fmt.Printf("%q", p.matrix[r][c])
+			fmt.Printf("%c", p.matrix[r][c])
 			if c < 3-1 {
 				fmt.Print(" | ")
 			}
@@ -341,16 +293,8 @@ const (
 
 func nextMove(p *_Panel, d Direction, pl *player) {
 
-	// save the current cell
-	//newCell := p.pointer
-
 	newCell := *p.findFirstFreeCellInDirection(p.pointer, d)
-	// update pointer
-
-	if !p.isCellFree(newCell) {
-		return
-	}
-
+	
 	// assign new one
 	p.assignCellValue(newCell, pl.symbol)
 
@@ -385,5 +329,4 @@ func Play() {
 	for !g.finished() {
 		g.nextRound()
 	}
-}
 }
