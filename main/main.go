@@ -1,8 +1,10 @@
 package main
 
-import "tictactoe/src"
-import "tictactoe/test"
-import "tictactoe/utils"
+import (
+	"tictactoe/game"
+	"tictactoe/test"
+	"tictactoe/utils"
+)
 
 func main() {
 
@@ -11,5 +13,5 @@ func main() {
 	// run tests, for now done before starting the game
 	test.TestMatrix()
 
-	tictactoe.Play()
+	game.Play()
 }
